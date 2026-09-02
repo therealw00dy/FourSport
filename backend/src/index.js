@@ -18,18 +18,38 @@ app.get("/api/health", (req, res) => {
     res.json({ status: "ok"});
 });
 
-// Team route
+
+///////////////////////////////
+/////// Team Routing /////////
+/////////////////////////////
+
+// Team get
 app.get("/api/teams", async (req, res) => {
     const teams = await Team.find();
     res.json(teams);
 });
 
-app.post("api/teams", async (req, res) => {
+// Team post
+app.post("/api/teams", async (req, res) => {
     const { name, PF, PA } = req.body;
 
     const team = await Team.create({ name, PF, PA });
     res.json(team);
 });
+
+// Team put
+app.put("/api/teams/:id", async (req, res) => {
+    const team = await Team.findByIdAndUpdate(req.params.id, req.body, { new: true });
+});
+
+// Team delete
+app.delete("/api/teams/:id", async (req, res) => {
+    await Team.findByIdAndDelete(req.params.id);
+    res.json({ message: "Team deleted" });
+});
+///////////////////////////////////////////////////////////////////////////////////////////
+
+
 
 
 // Start Server
