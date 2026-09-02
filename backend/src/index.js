@@ -41,6 +41,7 @@ app.post("/api/teams", async (req, res) => {
 // Team put
 app.put("/api/teams/:id", async (req, res) => {
     const team = await Team.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.json(team);
 });
 
 // Team delete
@@ -85,7 +86,7 @@ app.post("/api/matchups/generate/:week", async (req, res) => {
     res.json(matchups);
 });
 
-// Get matchups
+// GET matchups for week
 app.get("/api/matchups/:week", async (req, res) => {
     const week = parseInt(req.params.week);
 
@@ -96,13 +97,105 @@ app.get("/api/matchups/:week", async (req, res) => {
     res.json(matchups);
 });
 
-// Delete matchups
+// DELETE matchups
 app.delete("/api/matchups/week/:week", async (req, res) => {
     const week = parseInt(req.params.week);
     const result = await Matchup.deleteMany({ week });
     res.json({ message: "Matchups deleted", deleted: result.deletedCount });
 });
+
+app.put("/api/matchups/:id", async (req, res) => {
+    try {
+        const matchup = await Matchup.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            { new: true }
+        )
+        .populate("homeTeam")
+        .populate("awayTeam");
+
+        if (!matchup) {
+            return res.status(404).json({ error: "Matchup not found" });
+        }
+
+        res.json(matchup);
+    } catch (err) {
+        res.status(500).json({ error: "Server error"});
+    }
+});
+
+// GET all matchups
+app.get("/api/matchups", async (req, res) => {
+    const matchups = await Matchup.find()
+        .populate("homeTeam")
+        .populate("awayTeam");
+
+    res.json(matchups);
+});
 ////////////////////////////////////////////////////////////////////////////////////////////
+
+// GET standings
+app.get("/api/standings", async (req, res) => {
+    const teams = await Team.find();
+
+    const matchups = await Matchup.find()
+        .populate("homeTeam")
+        .populate("awayTeam");
+
+    const standings = {};
+
+    teams.forEach(team => {
+        standings[team._id] = {
+            team: team.name,
+            wins: 0,
+            losses: 0,
+            ties: 0,
+            PF: 0,
+            PA: 0
+        };
+    });
+
+    
+    matchups.forEach(matchup => {
+        if (!matchup.homeTeam || !matchup.awayTeam) {
+            return;
+        }
+        const homeTeamId = matchup.homeTeam._id;
+        const awayTeamId = matchup.awayTeam._id;
+
+        // Points for and against
+        standings[homeTeamId].PF += matchup.homeScore || 0;
+        standings[homeTeamId].PA += matchup.awayScore || 0;
+
+        standings[awayTeamId].PF += matchup.awayScore || 0;
+        standings[awayTeamId].PA += matchup.homeScore || 0;
+
+        // Win / Loss
+        if (matchup.homeScore > matchup.awayScore) {
+            standings[homeTeamId].wins++;
+            standings[awayTeamId].losses++;
+        } else if (matchup.homeScore < matchup.awayScore) {
+            standings[homeTeamId].losses++;
+            standings[awayTeamId].wins++;        
+        } else {
+            standings[homeTeamId].ties++;
+            standings[awayTeamId].ties++;
+        }
+
+    })
+    
+
+    const standingsArray = Object.values(standings);
+
+    // Sort standings
+    standingsArray.sort((a, b) => {
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        return b.PF - a.PF;
+    });
+
+    res.json(standingsArray);
+
+});
 
 
 // Start Server
