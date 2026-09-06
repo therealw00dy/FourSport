@@ -1,3 +1,5 @@
+// Team roster creation
+
 const SPORTS = {
     NFL: {
         bench: 10,
@@ -77,6 +79,7 @@ const SPORTS = {
 };
 
 
+// Player scoring design
 const SCORING = {
 
     NFL(stats = {}) {
